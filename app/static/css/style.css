@@ -79,3 +79,157 @@
     box-shadow: none !important;
   }
 }
+
+/* =========================================================================
+   스크롤바 (Figma "Scrollbar component" 반영)
+
+   디자인 구성 요소가 셋이다.
+     - 트랙(track)  : 스크롤바가 놓이는 바탕
+     - 썸(thumb)    : 잡고 끄는 둥근 막대. 트랙 안쪽에 여백을 두고 떠 있다
+     - 화살표(arrow): 트랙 양 끝의 버튼
+
+   세로·가로 양쪽에 모두 적용하고, 페이지 전체와 표를 감싼 스크롤 영역에
+   똑같이 입혀 화면 어디서나 같은 모양이 되게 한다.
+
+   주의: 스크롤바 커스터마이징은 브라우저마다 문법이 다르다.
+     - Chrome/Edge/Safari : ::-webkit-scrollbar-* (세밀하게 지정 가능)
+     - Firefox            : scrollbar-width / scrollbar-color (두 가지만 가능)
+   Firefox 에서는 화살표 버튼을 만들 수 없어 트랙과 썸 색만 맞춘다.
+   브라우저가 안 되는 부분은 기본 스크롤바로 자연스럽게 되돌아가므로,
+   어느 브라우저에서도 스크롤 자체는 문제없이 동작한다.
+   ========================================================================= */
+
+:root {
+  /* 스크롤바 색은 앱의 기존 회색 계열과 같은 톤으로 맞춘다.
+     스크롤바만 튀는 색이면 화면 전체의 인상이 흐트러진다. */
+  --sb-size: 14px;          /* 스크롤바 두께 (화살표 버튼의 한 변 길이이기도 하다) */
+  --sb-track: #f1f2f4;      /* 트랙 바탕 */
+  --sb-thumb: #c5c9d0;      /* 썸 기본 */
+  --sb-thumb-hover: #a8adb6; /* 마우스를 올렸을 때 */
+  --sb-thumb-active: #8b9098; /* 잡고 끄는 중 */
+  --sb-arrow: #8b9098;      /* 화살표 아이콘 색 */
+}
+
+/* ----- Firefox 전용 -----
+   @supports 로 감싼 이유가 중요하다.
+
+   scrollbar-width / scrollbar-color 는 원래 Firefox 전용이었지만 최신 Chrome 도
+   지원하게 됐다. 그런데 Chrome 은 이 표준 속성이 지정되어 있으면
+   ::-webkit-scrollbar 규칙을 통째로 무시한다. 두 방식을 그냥 같이 쓰면
+   아래에서 공들여 만든 둥근 썸과 화살표가 Chrome 에서 전혀 나타나지 않는다.
+
+   그래서 ::-webkit-scrollbar 를 지원하지 않는 브라우저(= Firefox)에서만
+   표준 속성이 적용되도록 조건을 건다. Chrome/Edge/Safari 는 이 블록을 건너뛰고
+   아래의 세밀한 규칙을 그대로 쓴다. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--sb-thumb) var(--sb-track);
+  }
+}
+
+/* ----- Chrome / Edge / Safari ----- */
+
+::-webkit-scrollbar {
+  width: var(--sb-size);   /* 세로 스크롤바 두께 */
+  height: var(--sb-size);  /* 가로 스크롤바 두께 */
+}
+
+::-webkit-scrollbar-track {
+  background: var(--sb-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--sb-thumb);
+
+  /* 완전히 둥근 막대. 999px 을 주면 높이가 얼마든 항상 양끝이 반원이 된다. */
+  border-radius: 999px;
+
+  /* 투명 테두리 + background-clip 조합은 썸을 트랙 안쪽으로 밀어 넣는 방법이다.
+     padding 으로는 안 되기 때문에 이 방식을 쓴다.
+     디자인에서 썸이 트랙에 꽉 차지 않고 여백을 두고 떠 있는 모양을 만든다. */
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--sb-thumb-hover);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--sb-thumb-active);
+}
+
+/* 세로 스크롤바와 가로 스크롤바가 만나는 구석. 비워두면 흰색으로 떠 보인다. */
+::-webkit-scrollbar-corner {
+  background: var(--sb-track);
+}
+
+/* ----- 화살표 버튼 -----
+   기본값은 숨김이므로, 보이게 하려면 크기와 배경을 직접 지정해야 한다.
+   방향별로 따로 지정하는 이유는 화살표가 가리키는 쪽이 각각 다르기 때문이다.
+   아이콘은 SVG 를 data URI 로 심어 이미지 파일 요청이 생기지 않게 했다. */
+
+::-webkit-scrollbar-button {
+  background-color: var(--sb-track);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 8px 8px;
+  display: block;
+}
+
+/* 세로: 위/아래 */
+::-webkit-scrollbar-button:vertical:start:decrement {
+  height: var(--sb-size);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M4 1.5 7.5 6H0.5z' fill='%238b9098'/%3E%3C/svg%3E");
+}
+::-webkit-scrollbar-button:vertical:end:increment {
+  height: var(--sb-size);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M4 6.5 0.5 2h7z' fill='%238b9098'/%3E%3C/svg%3E");
+}
+
+/* 가로: 왼쪽/오른쪽 */
+::-webkit-scrollbar-button:horizontal:start:decrement {
+  width: var(--sb-size);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M1.5 4 6 0.5v7z' fill='%238b9098'/%3E%3C/svg%3E");
+}
+::-webkit-scrollbar-button:horizontal:end:increment {
+  width: var(--sb-size);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3E%3Cpath d='M6.5 4 2 7.5v-7z' fill='%238b9098'/%3E%3C/svg%3E");
+}
+
+/* 브라우저는 트랙 양 끝에 '반대쪽 방향' 버튼 자리도 잡아 둔다.
+   그대로 두면 빈 네모가 하나씩 더 생기므로 숨긴다. */
+::-webkit-scrollbar-button:vertical:start:increment,
+::-webkit-scrollbar-button:vertical:end:decrement,
+::-webkit-scrollbar-button:horizontal:start:increment,
+::-webkit-scrollbar-button:horizontal:end:decrement {
+  display: none;
+}
+
+/* ----- 표를 감싼 가로 스크롤 영역 -----
+   스크롤바가 표 바로 아래 붙으면 표의 마지막 줄과 겹쳐 보인다.
+   약간의 여백과 둥근 모서리를 줘서 카드 안에 자연스럽게 앉게 한다. */
+.table-responsive {
+  padding-bottom: 2px;
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+}
+
+/* 내용이 짧아 스크롤이 없을 때도 자리를 미리 잡아 둔다.
+   스크롤바가 나타났다 사라질 때 내용이 좌우로 흔들리는 것을 막아 준다. */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* 터치 기기에서는 스크롤바가 평소 숨어 있다가 스크롤할 때만 잠깐 나타난다.
+   그 위에 굵은 화살표 버튼을 그리면 내용 위를 덮어 오히려 방해가 되므로,
+   마우스가 없는 환경에서는 화살표를 빼고 얇게 만든다. */
+@media (hover: none) {
+  :root {
+    --sb-size: 8px;
+  }
+  ::-webkit-scrollbar-button {
+    display: none;
+  }
+}

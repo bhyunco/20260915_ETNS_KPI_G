@@ -4,6 +4,8 @@
 확인할 수 있는 웹 기반 대시보드. Flask 기반이며 관리자와 조직원의 권한을
 분리해 서로 다른 기능을 제공한다.
 
+**운영 주소**: <https://20260915etnskpiv.vercel.app>
+
 ---
 
 ## 1. 빠른 시작
@@ -273,7 +275,61 @@ python smoke_test.py
 
 ---
 
-## 11. 확장할 때 참고할 점
+## 11. 배포 구성
+
+```
+GitHub  bhyunco/20260915_ETNS_KPI_G   소스 저장소
+   │  (main 브랜치 푸시 → 자동 배포)
+   ▼
+Vercel  20260915_etns_kpi_v           서버리스 실행
+   │  (DATABASE_URL 환경변수)
+   ▼
+Supabase 20260915_ETNS_KPI_S          PostgreSQL 17 (서울 리전)
+```
+
+운영 주소: <https://20260915etnskpiv.vercel.app>
+
+### 환경변수 (Vercel에 등록됨)
+
+| 이름 | 용도 |
+|---|---|
+| `DATABASE_URL` | Supabase 트랜잭션 풀러 접속 주소 |
+| `SECRET_KEY` | 세션 쿠키·CSRF 토큰 서명 키 |
+
+`SECRET_KEY`가 없으면 인스턴스마다 임시 키가 생겨 로그인 세션이 수시로
+풀린다. 배포 환경에서는 반드시 있어야 한다.
+
+### 서버리스에 맞춘 설정
+
+서버리스는 두 가지가 로컬과 다르고, 둘 다 `config.py`에서 처리한다.
+
+1. **파일을 쓸 수 없다** — 프로젝트 디렉터리가 읽기 전용이라 SQLite 파일을
+   만들 수 없다. 그래서 배포본은 반드시 PostgreSQL을 써야 한다.
+   (`DATABASE_URL`이 없으면 로컬처럼 SQLite로 떨어지므로 개발은 그대로 된다)
+
+2. **인스턴스가 수시로 생겼다 사라진다** — 커넥션 풀을 들고 있어봐야 다음
+   요청에서 쓰이지 않고 DB 연결 수만 잡아먹는다. `NullPool`로 풀을 끄고,
+   연결 재사용은 Supabase의 Supavisor 풀러(포트 6543)에 맡긴다.
+   이 풀러는 transaction 모드라 세션에 걸친 prepared statement를 쓸 수 없어
+   psycopg의 자동 prepare도 함께 끈다(`prepare_threshold=None`).
+
+`vercel.json`은 `wsgi.py`를 WSGI 핸들러로 지정하고 모든 경로를 그 앱으로
+보낸다. `rewrites`가 아니라 `routes`를 쓰는 이유는, `rewrites`는 요청 경로를
+바꿔버려 Flask가 모든 요청에 404를 내기 때문이다.
+
+### 배포본 데이터베이스 준비
+
+새 환경에 처음 올릴 때는 테이블을 한 번 만들어 줘야 한다.
+
+```bash
+set DATABASE_URL=postgresql://...     # Supabase 접속 주소
+python -c "from app import create_app; from app.extensions import db; app=create_app(); app.app_context().push(); db.create_all()"
+python seed.py                        # 샘플 데이터 (선택)
+```
+
+---
+
+## 12. 확장할 때 참고할 점
 
 - **KPI가 수만 건을 넘어가면** `blueprints/admin.py`의 KPI 목록 필터를
   손봐야 한다. 지금은 상태가 계산값이라 파이썬에서 거르는데, 그 규모에서는

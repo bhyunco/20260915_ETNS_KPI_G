@@ -1,0 +1,89 @@
+{# 전체 KPI 목록. 부서/상태로 걸러 볼 수 있다. #}
+{% extends "base.html" %}
+{% from "_macros.html" import progress_bar, status_badge, status_pills, delete_button %}
+
+{% block title %}KPI 관리 · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h1 class="h4 mb-0">KPI 관리 <span class="text-muted fs-6">({{ kpis|length }}건)</span></h1>
+  <a href="{{ url_for('admin.kpi_create') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>KPI 등록
+  </a>
+</div>
+
+<div class="mb-3 d-flex flex-wrap gap-1">{{ status_pills(status_counts) }}</div>
+
+{# 필터. GET 방식이라 필터 상태가 주소에 남아 새로고침해도 유지된다. #}
+<form method="get" class="row g-2 mb-3">
+  <div class="col-12 col-sm-4 col-md-3">
+    <select name="department" class="form-select">
+      <option value="">전체 부서</option>
+      {% for dept in departments %}
+      <option value="{{ dept.id }}" {% if selected_dept == dept.id %}selected{% endif %}>{{ dept.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-12 col-sm-4 col-md-3">
+    <select name="status" class="form-select">
+      <option value="">전체 상태</option>
+      {% for key, label in STATUS_LABELS.items() %}
+      <option value="{{ key }}" {% if selected_status == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <button class="btn btn-outline-secondary">적용</button>
+    <a href="{{ url_for('admin.kpi_list') }}" class="btn btn-link">초기화</a>
+  </div>
+</form>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>KPI명</th>
+          <th>담당자</th>
+          <th>부서</th>
+          <th class="text-end">목표</th>
+          <th class="text-end">현재</th>
+          <th style="min-width: 150px;">진행률</th>
+          <th class="text-center">가중치</th>
+          <th class="text-center">기간</th>
+          <th class="text-center">상태</th>
+          <th class="text-end">관리</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for kpi in kpis %}
+        <tr>
+          <td>
+            <a href="{{ url_for('admin.kpi_detail', kpi_id=kpi.id) }}"
+               class="fw-semibold text-decoration-none">{{ kpi.title }}</a>
+          </td>
+          <td class="text-nowrap">{{ kpi.owner.name }}</td>
+          <td class="text-nowrap">{{ kpi.owner.department_name }}</td>
+          <td class="text-end text-nowrap">{{ kpi.target_value }}{{ kpi.unit }}</td>
+          <td class="text-end text-nowrap">{{ kpi.current_value }}{{ kpi.unit }}</td>
+          <td>{{ progress_bar(kpi.progress, kpi.status_color, 18) }}</td>
+          <td class="text-center">{{ kpi.weight }}</td>
+          <td class="text-center text-nowrap small">
+            {{ kpi.start_date.strftime('%y.%m.%d') }}<br>~ {{ kpi.end_date.strftime('%y.%m.%d') }}
+          </td>
+          <td class="text-center">{{ status_badge(kpi) }}</td>
+          <td class="text-end text-nowrap">
+            <a href="{{ url_for('admin.kpi_edit', kpi_id=kpi.id) }}"
+               class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+            {{ delete_button(url_for('admin.kpi_delete', kpi_id=kpi.id),
+                 kpi.title ~ ' KPI를 삭제하시겠습니까?', '') }}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" class="text-center text-muted py-4">조건에 맞는 KPI가 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

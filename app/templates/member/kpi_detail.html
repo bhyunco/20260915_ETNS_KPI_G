@@ -1,0 +1,131 @@
+{# 조직원용 KPI 상세 + 실적 입력. 목표값과 기간은 읽기 전용으로만 보여준다. #}
+{% extends "base.html" %}
+{% from "_macros.html" import render_field, progress_bar, status_badge %}
+
+{% block title %}{{ kpi.title }} · {{ app_name }}{% endblock %}
+
+{% block content %}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-1">{{ kpi.title }} {{ status_badge(kpi) }}</h1>
+    <p class="text-muted small mb-0">최종 업데이트 {{ kpi.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+  </div>
+  <a href="{{ url_for('member.my_kpi') }}" class="btn btn-sm btn-outline-secondary">목록</a>
+</div>
+
+<div class="row g-3">
+
+  <div class="col-12 col-lg-8">
+    {# ----- 진행 상황 ----- #}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-end mb-2">
+          <div>
+            <div class="text-muted small">진행률</div>
+            <div class="display-5 fw-bold">{{ kpi.progress }}<span class="fs-4">%</span></div>
+          </div>
+          <div class="text-end">
+            <div class="text-muted small">실적 / 목표</div>
+            <div class="fs-5 fw-semibold">{{ kpi.current_value }} / {{ kpi.target_value }} {{ kpi.unit }}</div>
+          </div>
+        </div>
+
+        {{ progress_bar(kpi.progress, kpi.status_color, 24) }}
+
+        <div class="d-flex justify-content-between mt-2 small text-muted">
+          <span>오늘 기준 기대 진행률 {{ kpi.expected_progress | round(1) }}%</span>
+          <span>
+            {% if kpi.days_left >= 0 %}종료까지 {{ kpi.days_left }}일
+            {% else %}종료일 {{ -kpi.days_left }}일 경과{% endif %}
+          </span>
+        </div>
+
+        {# 상태가 왜 이렇게 나왔는지 한 줄로 설명해 준다.
+           배지만 보여주면 담당자가 판정 이유를 알 수 없다. #}
+        <div class="alert alert-{{ kpi.status_color }} mt-3 mb-0 py-2 small">
+          {% if kpi.status == 'achieved' %}
+            목표를 달성했습니다.
+          {% elif kpi.status == 'failed' %}
+            종료일이 지났으나 목표에 도달하지 못했습니다.
+          {% elif kpi.status == 'delayed' %}
+            기대 진행률보다 뒤처져 있습니다. 실적 입력이 누락되지 않았는지 확인해 주세요.
+          {% else %}
+            일정대로 진행되고 있습니다.
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    {# ----- KPI 목표 (읽기 전용) ----- #}
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <h2 class="h6">KPI 목표</h2>
+        <dl class="row mb-0 small">
+          <dt class="col-4 col-sm-3 text-muted">설명</dt>
+          <dd class="col-8 col-sm-9">{{ kpi.description or '-' }}</dd>
+          <dt class="col-4 col-sm-3 text-muted">목표값</dt>
+          <dd class="col-8 col-sm-9">{{ kpi.target_value }} {{ kpi.unit }}</dd>
+          <dt class="col-4 col-sm-3 text-muted">기간</dt>
+          <dd class="col-8 col-sm-9">{{ kpi.start_date }} ~ {{ kpi.end_date }}</dd>
+          <dt class="col-4 col-sm-3 text-muted">가중치</dt>
+          <dd class="col-8 col-sm-9">{{ kpi.weight }}</dd>
+        </dl>
+        <div class="form-text mt-2">목표값과 기간은 관리자만 변경할 수 있습니다.</div>
+      </div>
+    </div>
+
+    {# ----- 이 KPI 의 업데이트 이력 ----- #}
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-0 pt-3">
+        <h2 class="h6 mb-0">업데이트 이력 <span class="text-muted">({{ kpi.updates|length }}건)</span></h2>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>일시</th><th class="text-end">변경 전</th><th class="text-end">변경 후</th>
+              <th class="text-end">증감</th><th>메모</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in kpi.updates %}
+            <tr>
+              <td class="text-nowrap small">{{ u.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+              <td class="text-end">{{ u.previous_value }}</td>
+              <td class="text-end fw-semibold">{{ u.new_value }}</td>
+              <td class="text-end">
+                <span class="badge {% if u.delta >= 0 %}text-bg-success{% else %}text-bg-secondary{% endif %}">
+                  {{ '+' if u.delta >= 0 else '' }}{{ u.delta }}
+                </span>
+              </td>
+              <td class="small text-muted">{{ u.note or '-' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted py-4">입력 이력이 없습니다.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {# ----- 실적 입력 ----- #}
+  <div class="col-12 col-lg-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-0 pt-3">
+        <h2 class="h6 mb-0"><i class="bi bi-pencil-square me-1"></i>현재 실적 입력</h2>
+      </div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('member.update_progress', kpi_id=kpi.id) }}" novalidate>
+          {{ form.hidden_tag() }}
+          {{ render_field(form.current_value, '단위: ' ~ kpi.unit ~ ' / 목표 ' ~ kpi.target_value) }}
+          {{ render_field(form.note, '무엇을 했는지 간단히 남겨두면 나중에 근거가 됩니다.') }}
+          {{ form.submit(class="btn btn-primary w-100") }}
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

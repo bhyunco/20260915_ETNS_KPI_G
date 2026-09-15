@@ -1,0 +1,80 @@
+{# 조직원 목록. 요청서 5-2 의 표 항목을 그대로 구현했다. #}
+{% extends "base.html" %}
+{% from "_macros.html" import delete_button %}
+
+{% block title %}조직원 관리 · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <h1 class="h4 mb-0">조직원 관리 <span class="text-muted fs-6">({{ users|length }}명)</span></h1>
+  <a href="{{ url_for('admin.user_create') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-person-plus me-1"></i>조직원 등록
+  </a>
+</div>
+
+{# 검색: 이름·사번·아이디 중 아무거나 걸리면 보여준다 #}
+<form method="get" class="row g-2 mb-3">
+  <div class="col-12 col-sm-6 col-md-4">
+    <input type="search" name="q" value="{{ keyword }}" class="form-control"
+           placeholder="이름 / 사번 / 아이디 검색">
+  </div>
+  <div class="col-auto">
+    <button class="btn btn-outline-secondary"><i class="bi bi-search"></i></button>
+    {% if keyword %}<a href="{{ url_for('admin.user_list') }}" class="btn btn-link">초기화</a>{% endif %}
+  </div>
+</form>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>사번</th>
+          <th>이름</th>
+          <th>부서</th>
+          <th>직급</th>
+          <th>이메일</th>
+          <th class="text-center">권한</th>
+          <th class="text-center">상태</th>
+          <th class="text-center">KPI</th>
+          <th class="text-end">관리</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td class="text-nowrap">{{ user.employee_no }}</td>
+          <td class="fw-semibold text-nowrap">{{ user.name }}</td>
+          <td class="text-nowrap">{{ user.department_name }}</td>
+          <td class="text-nowrap">{{ user.position or '-' }}</td>
+          <td class="text-nowrap">{{ user.email }}</td>
+          <td class="text-center">
+            <span class="badge {% if user.is_admin %}text-bg-warning{% else %}text-bg-secondary{% endif %}">
+              {{ user.role_label }}
+            </span>
+          </td>
+          <td class="text-center">
+            <span class="badge {% if user.is_active_user %}text-bg-success{% else %}text-bg-light text-dark{% endif %}">
+              {{ '활성' if user.is_active_user else '비활성' }}
+            </span>
+          </td>
+          <td class="text-center">{{ user.kpi_count }}</td>
+          <td class="text-end text-nowrap">
+            <a href="{{ url_for('admin.user_edit', user_id=user.id) }}"
+               class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> 수정</a>
+            {{ delete_button(
+                 url_for('admin.user_delete', user_id=user.id),
+                 user.name ~ ' 조직원을 삭제하시겠습니까?\n배정된 KPI와 입력 이력도 함께 삭제됩니다.'
+               ) }}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9" class="text-center text-muted py-4">
+          {% if keyword %}검색 결과가 없습니다.{% else %}등록된 조직원이 없습니다.{% endif %}
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

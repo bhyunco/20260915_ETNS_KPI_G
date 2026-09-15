@@ -1,0 +1,118 @@
+{# =========================================================================
+   여러 화면에서 반복되는 조각을 매크로(macro)로 만들어 둔 파일.
+
+   매크로는 템플릿에서 쓰는 함수라고 생각하면 된다. 같은 모양을 여러 번
+   그릴 때 복사해서 붙여넣는 대신 여기서 한 번만 정의하고 불러 쓴다.
+   모양을 바꿔야 할 때 이 파일만 고치면 모든 화면에 반영된다.
+
+   사용법:
+       {% from "_macros.html" import render_field, progress_bar %}
+   ========================================================================= #}
+
+
+{# ---------- 폼 입력칸 하나를 라벨·오류메시지와 함께 그린다 ---------- #}
+{% macro render_field(field, help_text="") %}
+  <div class="mb-3">
+    {{ field.label(class="form-label fw-semibold") }}
+
+    {# 검증에 실패한 칸은 빨간 테두리(is-invalid)를 입혀 어디가 틀렸는지 바로 보이게 한다 #}
+    {% if field.type == "TextAreaField" %}
+      {{ field(class="form-control" + (" is-invalid" if field.errors else ""), rows=3) }}
+    {% elif field.type in ("SelectField", "SelectMultipleField") %}
+      {{ field(class="form-select" + (" is-invalid" if field.errors else "")) }}
+    {% elif field.type == "BooleanField" %}
+      {# 체크박스는 라벨을 위에 따로 그리지 않고 옆에 붙인다 #}
+    {% else %}
+      {{ field(class="form-control" + (" is-invalid" if field.errors else "")) }}
+    {% endif %}
+
+    {% for error in field.errors %}
+      <div class="invalid-feedback d-block">{{ error }}</div>
+    {% endfor %}
+
+    {% if help_text %}
+      <div class="form-text">{{ help_text }}</div>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+
+{# ---------- 체크박스 전용 ---------- #}
+{% macro render_checkbox(field, help_text="") %}
+  <div class="form-check mb-3">
+    {{ field(class="form-check-input") }}
+    {{ field.label(class="form-check-label") }}
+    {% if help_text %}
+      <div class="form-text">{{ help_text }}</div>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+
+{# ---------- 진행률 막대 ----------
+   value    : 진행률(%) - 100 을 넘을 수 있다
+   color    : 부트스트랩 색상 이름 (success / primary / warning / danger)
+   height   : 막대 높이(px)
+   막대 너비는 100% 에서 자르고, 숫자는 실제 값을 그대로 보여준다.
+   그래야 '120% 달성' 같은 초과 달성이 숫자로는 드러난다. #}
+{% macro progress_bar(value, color="primary", height=20, show_label=true) %}
+  <div class="progress" style="height: {{ height }}px;" role="progressbar"
+       aria-valuenow="{{ value }}" aria-valuemin="0" aria-valuemax="100">
+    <div class="progress-bar bg-{{ color }} {% if value < 100 %}progress-bar-striped{% endif %}"
+         style="width: {{ [value, 100] | min }}%;">
+      {% if show_label and value >= 15 %}{{ value }}%{% endif %}
+    </div>
+  </div>
+  {% if show_label and value < 15 %}
+    <small class="text-muted">{{ value }}%</small>
+  {% endif %}
+{% endmacro %}
+
+
+{# ---------- 상태 배지 ---------- #}
+{% macro status_badge(kpi) %}
+  <span class="badge text-bg-{{ kpi.status_color }}">{{ kpi.status_label }}</span>
+{% endmacro %}
+
+
+{# ---------- 상태별 개수를 배지 4개로 나열 ---------- #}
+{% macro status_pills(counts) %}
+  <span class="badge text-bg-success">달성 {{ counts.achieved }}</span>
+  <span class="badge text-bg-primary">진행중 {{ counts.on_track }}</span>
+  <span class="badge text-bg-warning">지연 {{ counts.delayed }}</span>
+  <span class="badge text-bg-danger">미달 {{ counts.failed }}</span>
+{% endmacro %}
+
+
+{# ---------- 요약 카드 (대시보드 상단) ---------- #}
+{% macro summary_card(label, value, unit="", icon="bi-graph-up", color="primary", element_id="") %}
+  <div class="col-6 col-lg-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="summary-icon text-bg-{{ color }}">
+          <i class="bi {{ icon }}"></i>
+        </div>
+        <div>
+          <div class="text-muted small">{{ label }}</div>
+          <div class="fs-4 fw-bold" {% if element_id %}id="{{ element_id }}"{% endif %}>
+            {{ value }}{{ unit }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endmacro %}
+
+
+{# ---------- 삭제 버튼 (확인창 포함) ----------
+   삭제는 POST 로만 처리한다. 링크(GET)로 만들면 주소를 여는 것만으로
+   자료가 지워질 수 있기 때문이다. CSRF 토큰도 반드시 함께 보낸다. #}
+{% macro delete_button(action_url, confirm_message, label="삭제") %}
+  <form method="post" action="{{ action_url }}" class="d-inline"
+        onsubmit="return confirm('{{ confirm_message }}');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-sm btn-outline-danger">
+      <i class="bi bi-trash"></i> {{ label }}
+    </button>
+  </form>
+{% endmacro %}

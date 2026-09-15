@@ -1,0 +1,131 @@
+{# =========================================================================
+   모든 화면이 물려받는 기본 레이아웃.
+
+   자식 템플릿은 {% extends "base.html" %} 를 쓰고, 아래에 정의된
+   {% block %} 부분만 채워 넣으면 된다. 머리글/메뉴/알림창을 매번
+   다시 쓰지 않아도 되고, 메뉴를 고칠 때 이 파일만 고치면 된다.
+   ========================================================================= #}
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  {# 태블릿·PC 반응형을 위한 필수 설정. 이게 없으면 모바일에서 화면이 축소되어 보인다. #}
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ app_name }}{% endblock %}</title>
+
+  {# Bootstrap 5 (CDN) - 반응형 레이아웃과 기본 컴포넌트를 제공한다 #}
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="bg-body-tertiary">
+
+{% if current_user.is_authenticated %}
+  {# ---------- 상단 내비게이션 (로그인한 사용자에게만 보인다) ---------- #}
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+    <div class="container-fluid px-lg-4">
+      <a class="navbar-brand fw-semibold" href="{{ url_for('home') }}">
+        <i class="bi bi-graph-up-arrow me-1"></i>{{ app_name }}
+      </a>
+
+      {# 화면이 좁아지면 메뉴를 햄버거 버튼으로 접는다 (태블릿 대응) #}
+      <button class="navbar-toggler" type="button"
+              data-bs-toggle="collapse" data-bs-target="#mainNav"
+              aria-controls="mainNav" aria-expanded="false" aria-label="메뉴 열기">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="mainNav">
+        <ul class="navbar-nav me-auto">
+          {% if current_user.is_admin %}
+            {# ----- 관리자 메뉴 ----- #}
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}"
+                 href="{{ url_for('admin.dashboard') }}">
+                <i class="bi bi-speedometer2 me-1"></i>대시보드
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint and 'kpi' in request.endpoint and request.blueprint == 'admin' %}active{% endif %}"
+                 href="{{ url_for('admin.kpi_list') }}">
+                <i class="bi bi-bullseye me-1"></i>KPI 관리
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint and 'user' in request.endpoint %}active{% endif %}"
+                 href="{{ url_for('admin.user_list') }}">
+                <i class="bi bi-people me-1"></i>조직원 관리
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint and 'department' in request.endpoint %}active{% endif %}"
+                 href="{{ url_for('admin.department_list') }}">
+                <i class="bi bi-diagram-3 me-1"></i>부서 관리
+              </a>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                <i class="bi bi-bar-chart-line me-1"></i>현황 분석
+              </a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{{ url_for('admin.department_stats') }}">부서별 현황</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('admin.member_stats') }}">조직원별 현황</a></li>
+              </ul>
+            </li>
+          {% endif %}
+
+          {# ----- 모든 사용자 공통 메뉴 (관리자도 본인 KPI 를 가질 수 있다) ----- #}
+          <li class="nav-item">
+            <a class="nav-link {% if request.blueprint == 'member' %}active{% endif %}"
+               href="{{ url_for('member.my_kpi') }}">
+              <i class="bi bi-person-badge me-1"></i>내 KPI
+            </a>
+          </li>
+        </ul>
+
+        {# ----- 오른쪽: 로그인한 사용자 정보 ----- #}
+        <ul class="navbar-nav">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle me-1"></i>{{ current_user.name }}
+              <span class="badge {% if current_user.is_admin %}text-bg-warning{% else %}text-bg-secondary{% endif %} ms-1">
+                {{ current_user.role_label }}
+              </span>
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="{{ url_for('member.profile') }}">내 정보</a></li>
+              <li><a class="dropdown-item" href="{{ url_for('auth.change_password') }}">비밀번호 변경</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">로그아웃</a></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+{% endif %}
+
+{# ---------- 알림 메시지 (flash) ----------
+   flash() 로 남긴 메시지를 한 번만 보여준다. 저장·삭제 결과를 알려주는 용도. #}
+<div class="container-fluid px-lg-4 mt-3">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="닫기"></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+</div>
+
+{# ---------- 각 화면의 본문이 들어오는 자리 ---------- #}
+<main class="container-fluid px-lg-4 pb-5">
+  {% block content %}{% endblock %}
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+{# 각 화면에서 추가로 필요한 스크립트를 넣는 자리 #}
+{% block scripts %}{% endblock %}
+</body>
+</html>

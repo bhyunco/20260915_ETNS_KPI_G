@@ -1,0 +1,182 @@
+{# =========================================================================
+   관리자 대시보드.
+   요청서 3-1 의 '실시간 KPI 대시보드' 화면이다.
+
+   구성
+     1) 상단 요약 카드 4개
+     2) 차트 3개 (부서별 진행률 / 상태 분포 / 진행률 하위 조직원)
+     3) 부서별 현황 표
+     4) 최근 실적 입력 내역
+
+   차트 데이터는 /admin/api/chart-data 에서 주기적으로 다시 받아와
+   페이지 새로고침 없이 갱신한다. (dashboard.js 가 처리)
+   ========================================================================= #}
+{% extends "base.html" %}
+{% from "_macros.html" import summary_card, progress_bar, status_pills %}
+
+{% block title %}대시보드 · {{ app_name }}{% endblock %}
+
+{% block content %}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+  <div>
+    <h1 class="h4 mb-1">조직 전체 KPI 현황</h1>
+    <p class="text-muted small mb-0">
+      기준일 {{ today.strftime('%Y-%m-%d') }}
+      <span class="ms-2">
+        <i class="bi bi-arrow-repeat"></i>
+        <span id="lastUpdated">자동 갱신 대기 중</span>
+      </span>
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('admin.kpi_create') }}" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>KPI 등록
+    </a>
+    <a href="{{ url_for('admin.user_create') }}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-person-plus me-1"></i>조직원 등록
+    </a>
+  </div>
+</div>
+
+{# ---------- 1) 요약 카드 ---------- #}
+<div class="row g-3 mb-4">
+  {{ summary_card("전체 KPI", summary.total_kpi, "건", "bi-bullseye", "primary", "cardTotalKpi") }}
+  {{ summary_card("전체 진행률", summary.overall_progress, "%", "bi-speedometer2", "info", "cardProgress") }}
+  {{ summary_card("달성률", summary.achieved_rate, "%", "bi-trophy", "success", "cardAchieved") }}
+  {{ summary_card("주의 필요", summary.attention_count, "건", "bi-exclamation-triangle", "danger", "cardAttention") }}
+</div>
+
+{# 주의 필요 = 지연 + 미달. 관리자가 가장 먼저 봐야 할 숫자라 따로 뽑았다. #}
+
+{# ---------- 2) 차트 ---------- #}
+<div class="row g-3 mb-4">
+
+  <div class="col-12 col-xl-5">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white border-0 pt-3">
+        <h2 class="h6 mb-0"><i class="bi bi-diagram-3 me-1"></i>부서별 평균 진행률</h2>
+        <small class="text-muted">가중치를 반영한 평균입니다</small>
+      </div>
+      <div class="card-body">
+        <div class="chart-box"><canvas id="departmentChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-6 col-xl-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white border-0 pt-3">
+        <h2 class="h6 mb-0"><i class="bi bi-pie-chart me-1"></i>KPI 상태 분포</h2>
+        <small class="text-muted">전체 {{ summary.total_kpi }}건</small>
+      </div>
+      <div class="card-body">
+        <div class="chart-box"><canvas id="statusChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white border-0 pt-3">
+        <h2 class="h6 mb-0"><i class="bi bi-person-exclamation me-1"></i>진행률 하위 조직원</h2>
+        <small class="text-muted">지원이 필요한 순서입니다</small>
+      </div>
+      <div class="card-body">
+        <div class="chart-box"><canvas id="memberChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{# ---------- 3) 부서별 현황 표 ---------- #}
+<div class="row g-3">
+  <div class="col-12 col-xl-7">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-3">
+        <h2 class="h6 mb-0"><i class="bi bi-building me-1"></i>부서별 현황</h2>
+        <a href="{{ url_for('admin.department_stats') }}" class="btn btn-sm btn-link">자세히</a>
+      </div>
+      <div class="card-body p-0">
+        {# table-responsive 로 감싸야 좁은 화면에서 표가 넘칠 때 가로 스크롤이 생긴다 #}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>부서</th>
+                <th class="text-center">인원</th>
+                <th class="text-center">KPI</th>
+                <th style="min-width: 160px;">진행률</th>
+                <th class="text-nowrap">상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for dept in departments %}
+              <tr>
+                <td class="fw-semibold">{{ dept.name }}</td>
+                <td class="text-center">{{ dept.member_count }}</td>
+                <td class="text-center">{{ dept.kpi_count }}</td>
+                <td>{{ progress_bar(dept.progress, "info", 18) }}</td>
+                <td class="text-nowrap">{{ status_pills(dept.status_counts) }}</td>
+              </tr>
+              {% else %}
+              {# for ... else 는 목록이 비었을 때 실행된다 #}
+              <tr><td colspan="5" class="text-center text-muted py-4">등록된 부서가 없습니다.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ---------- 4) 최근 실적 입력 ---------- #}
+  <div class="col-12 col-xl-5">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white border-0 pt-3">
+        <h2 class="h6 mb-0"><i class="bi bi-clock-history me-1"></i>최근 실적 입력</h2>
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for update in recent_updates %}
+          <li class="list-group-item">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <div class="min-w-0">
+                <a href="{{ url_for('admin.kpi_detail', kpi_id=update.kpi.id) }}"
+                   class="fw-semibold text-decoration-none d-block text-truncate">
+                  {{ update.kpi.title }}
+                </a>
+                <small class="text-muted">
+                  {{ update.kpi.owner.name }} ·
+                  {{ update.previous_value }} → {{ update.new_value }}{{ update.kpi.unit }}
+                </small>
+              </div>
+              <div class="text-end flex-shrink-0">
+                <span class="badge {% if update.delta >= 0 %}text-bg-success{% else %}text-bg-secondary{% endif %}">
+                  {{ '+' if update.delta >= 0 else '' }}{{ update.delta }}
+                </span>
+                <div><small class="text-muted">{{ update.created_at.strftime('%m-%d %H:%M') }}</small></div>
+              </div>
+            </div>
+          </li>
+          {% else %}
+          <li class="list-group-item text-center text-muted py-4">아직 입력된 실적이 없습니다.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+{# 차트 데이터를 받아올 주소를 자바스크립트에 알려준다.
+   템플릿 문법은 .js 파일 안에서 쓸 수 없으므로 data 속성으로 전달한다. #}
+<div id="dashboardConfig"
+     data-url="{{ url_for('admin.chart_data') }}"
+     hidden></div>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

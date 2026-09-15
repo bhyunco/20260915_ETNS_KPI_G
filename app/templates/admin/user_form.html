@@ -1,0 +1,60 @@
+{# 조직원 등록/수정 폼. 등록과 수정이 같은 템플릿을 쓰고 mode 로 구분한다. #}
+{% extends "base.html" %}
+{% from "_macros.html" import render_field, render_checkbox %}
+
+{% block title %}조직원 {{ '등록' if mode == 'create' else '수정' }} · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+
+    <h1 class="h4 mb-3">
+      조직원 {{ '등록' if mode == 'create' else '수정' }}
+      {% if mode == 'edit' %}<span class="text-muted fs-6">{{ user.name }}</span>{% endif %}
+    </h1>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <form method="post" novalidate>
+          {{ form.hidden_tag() }}
+
+          <div class="row">
+            <div class="col-12 col-md-6">{{ render_field(form.employee_no) }}</div>
+            <div class="col-12 col-md-6">{{ render_field(form.name) }}</div>
+          </div>
+
+          {{ render_field(form.email) }}
+
+          <div class="row">
+            <div class="col-12 col-md-6">{{ render_field(form.department_id) }}</div>
+            <div class="col-12 col-md-6">{{ render_field(form.position, "예: 사원, 대리, 과장") }}</div>
+          </div>
+
+          <hr class="my-4">
+
+          <div class="row">
+            <div class="col-12 col-md-6">{{ render_field(form.username) }}</div>
+            <div class="col-12 col-md-6">{{ render_field(form.role) }}</div>
+          </div>
+
+          <div class="row">
+            <div class="col-12 col-md-6">
+              {{ render_field(form.password,
+                   '6자 이상.' if mode == 'create' else '비워두면 기존 비밀번호를 그대로 사용합니다.') }}
+            </div>
+            <div class="col-12 col-md-6">{{ render_field(form.password_confirm) }}</div>
+          </div>
+
+          {{ render_checkbox(form.is_active_user, '비활성 계정은 로그인할 수 없습니다.') }}
+
+          <div class="d-flex gap-2">
+            {{ form.submit(class="btn btn-primary") }}
+            <a href="{{ url_for('admin.user_list') }}" class="btn btn-outline-secondary">취소</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

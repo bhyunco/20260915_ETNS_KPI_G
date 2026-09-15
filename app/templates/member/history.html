@@ -1,0 +1,52 @@
+{# 본인이 입력한 KPI 실적 이력 전체. #}
+{% extends "base.html" %}
+
+{% block title %}입력 이력 · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">KPI 업데이트 이력 <span class="text-muted fs-6">({{ updates|length }}건)</span></h1>
+  <a href="{{ url_for('member.my_kpi') }}" class="btn btn-sm btn-outline-secondary">내 KPI</a>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>일시</th>
+          <th>KPI</th>
+          <th class="text-end">변경 전</th>
+          <th class="text-end">변경 후</th>
+          <th class="text-end">증감</th>
+          <th>입력자</th>
+          <th>메모</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in updates %}
+        <tr>
+          <td class="text-nowrap small">{{ u.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td>
+            <a href="{{ url_for('member.kpi_detail', kpi_id=u.kpi.id) }}"
+               class="text-decoration-none">{{ u.kpi.title }}</a>
+          </td>
+          <td class="text-end">{{ u.previous_value }}{{ u.kpi.unit }}</td>
+          <td class="text-end fw-semibold">{{ u.new_value }}{{ u.kpi.unit }}</td>
+          <td class="text-end">
+            <span class="badge {% if u.delta >= 0 %}text-bg-success{% else %}text-bg-secondary{% endif %}">
+              {{ '+' if u.delta >= 0 else '' }}{{ u.delta }}
+            </span>
+          </td>
+          {# 관리자가 대신 입력한 건도 여기 나오므로 입력자를 표시한다 #}
+          <td class="text-nowrap small">{{ u.updated_by.name if u.updated_by else '-' }}</td>
+          <td class="small text-muted">{{ u.note or '-' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-4">입력 이력이 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

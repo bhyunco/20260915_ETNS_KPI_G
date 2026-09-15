@@ -1,0 +1,62 @@
+{# 부서 목록 + 등록. 항목이 단순해 한 화면에서 처리한다. #}
+{% extends "base.html" %}
+{% from "_macros.html" import render_field, delete_button %}
+
+{% block title %}부서 관리 · {{ app_name }}{% endblock %}
+
+{% block content %}
+<h1 class="h4 mb-3">부서 관리</h1>
+
+<div class="row g-3">
+  {# 등록 폼 #}
+  <div class="col-12 col-lg-4">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-0 pt-3"><h2 class="h6 mb-0">부서 등록</h2></div>
+      <div class="card-body">
+        <form method="post" novalidate>
+          {{ form.hidden_tag() }}
+          {{ render_field(form.name) }}
+          {{ render_field(form.description, "선택 입력") }}
+          {{ form.submit(class="btn btn-primary w-100") }}
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {# 목록 #}
+  <div class="col-12 col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>부서명</th>
+              <th>설명</th>
+              <th class="text-center">인원</th>
+              <th class="text-end">관리</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for dept in departments %}
+            <tr>
+              <td class="fw-semibold">{{ dept.name }}</td>
+              <td class="text-muted small">{{ dept.description or '-' }}</td>
+              <td class="text-center">{{ dept.members|length }}</td>
+              <td class="text-end text-nowrap">
+                <a href="{{ url_for('admin.department_edit', dept_id=dept.id) }}"
+                   class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                {{ delete_button(
+                     url_for('admin.department_delete', dept_id=dept.id),
+                     dept.name ~ ' 부서를 삭제하시겠습니까?', '') }}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center text-muted py-4">등록된 부서가 없습니다.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+{# 조직원별 KPI 현황 상세. 진행률이 낮은 사람이 위로 온다. #}
+{% extends "base.html" %}
+{% from "_macros.html" import progress_bar, status_pills %}
+
+{% block title %}조직원별 현황 · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 mb-0">조직원별 KPI 현황</h1>
+  <small class="text-muted">진행률이 낮은 순</small>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>사번</th>
+          <th>이름</th>
+          <th>부서</th>
+          <th>직급</th>
+          <th class="text-center">KPI</th>
+          <th style="min-width: 180px;">진행률</th>
+          <th class="text-nowrap">상태</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in members %}
+        <tr>
+          <td class="text-nowrap">{{ m.employee_no }}</td>
+          <td class="fw-semibold text-nowrap">{{ m.name }}</td>
+          <td class="text-nowrap">{{ m.department }}</td>
+          <td class="text-nowrap">{{ m.position }}</td>
+          <td class="text-center">{{ m.kpi_count }}</td>
+          <td>
+            {# 진행률 구간에 따라 색을 달리해 한눈에 들어오게 한다 #}
+            {% if m.progress >= 80 %}{% set c = 'success' %}
+            {% elif m.progress >= 50 %}{% set c = 'info' %}
+            {% elif m.progress >= 30 %}{% set c = 'warning' %}
+            {% else %}{% set c = 'danger' %}{% endif %}
+            {{ progress_bar(m.progress, c, 18) }}
+          </td>
+          <td class="text-nowrap">{{ status_pills(m.status_counts) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-4">KPI가 배정된 조직원이 없습니다.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

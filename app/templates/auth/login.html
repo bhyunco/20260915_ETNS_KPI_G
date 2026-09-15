@@ -1,0 +1,32 @@
+{# 로그인 화면. 요청서 4-1 에 따라 아이디와 비밀번호만 받는다. #}
+{% extends "base.html" %}
+{% from "_macros.html" import render_field, render_checkbox %}
+
+{% block title %}로그인 · {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center login-wrap">
+  <div class="col-11 col-sm-8 col-md-6 col-lg-4">
+
+    <div class="text-center mb-4">
+      <i class="bi bi-graph-up-arrow display-5 text-primary"></i>
+      <h1 class="h4 mt-2 mb-1">{{ app_name }}</h1>
+      <p class="text-muted small mb-0">조직원 KPI 관리 대시보드</p>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        {# novalidate 를 주면 브라우저 기본 검증 대신 서버 검증 메시지를 보여줄 수 있다 #}
+        <form method="post" novalidate>
+          {{ form.hidden_tag() }}   {# CSRF 토큰이 여기 들어간다 #}
+          {{ render_field(form.username) }}
+          {{ render_field(form.password) }}
+          {{ render_checkbox(form.remember) }}
+          {{ form.submit(class="btn btn-primary w-100 py-2") }}
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
